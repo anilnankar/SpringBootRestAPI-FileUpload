@@ -7,9 +7,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,14 +27,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import com.an.restdemo.*;
 
-//@CrossOrigin(origins = { "http://localhost:3000", "http://localhost:3001", "http://localhost:4200" })
+import com.an.message.ResponseMessage;
+import com.an.service.FilesStorageService;
+
+@CrossOrigin(origins = { "http://localhost:3000" })
 @RestController
 public class ImageResource {
 
-	private static String imageDirectory = System.getProperty("user.dir") + "/images/";
+	private static String imageDirectory = System.getProperty("user.dir") + "/uploads/";
+
+	@Autowired
+	FilesStorageService storageService;
 
 	@Autowired
 	private ImageHardcodedService imageManagementService;
@@ -47,32 +56,75 @@ public class ImageResource {
 	@GetMapping("/image/{id}")
 	public Image getImage(@PathVariable long id) {
 		return imageManagementService.findById(id);
-	}
+	}	
 	
 	@PostMapping("/image")
-    public ResponseEntity<?> uploadImage(@RequestParam("file")MultipartFile file,
-                                         @RequestParam("filename") String name) {
-    	       
-        makeDirectoryIfNotExist(imageDirectory);
-        Path fileNamePath = Paths.get(imageDirectory,
-                name.concat(".").concat(FilenameUtils.getExtension(file.getOriginalFilename())));
-        try {
-            Files.write(fileNamePath, file.getBytes());
-            Image image = new Image();
-            image.setfilename(name);
-            image.setfilepath(fileNamePath.toString());
-    		Image createdImage = imageManagementService.save(image);
-            return ResponseEntity.status(HttpStatus.CREATED).body(imageManagementService.findById(createdImage.getId()));
-        } catch (IOException ex) {
-        	return new ResponseEntity<String>("Image upload failed", HttpStatus.BAD_REQUEST);
-        }
-    }
+	public ResponseEntity<ResponseMessage> uploadFile(@RequestParam("file") MultipartFile file,
+			@RequestParam("filename") String name) {
+		String message = "";
+		try {
+			storageService.save(file);		
+
+			String filename = file.getOriginalFilename().toString();
+			Resource filePath = storageService.load(filename);		    
+			System.out.println("filePath"+filePath);
+		    String url = MvcUriComponentsBuilder
+		          .fromMethodName(ImageResource.class, "getFile", filename.toString()).build().toString();
+		      
+			Image image = new Image();
+			image.setfilename(filename);
+			image.setfilepath(url.toString());
+			Image createdImage = imageManagementService.save(image);
+			System.out.println(createdImage.getId());
+		  	message = "Uploaded the file successfully: " + file.getOriginalFilename();
+		  	return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseMessage(message));
+		} catch (Exception e) {
+			message = "Could not upload the file: " + file.getOriginalFilename() + "!";
+			return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(new ResponseMessage(message));
+	    }
+	}
+	
+	@GetMapping("/files/{filename:.+}")
+	public ResponseEntity<Resource> getFile(@PathVariable String filename) {
+	    Resource file = storageService.load(filename);
+	    return ResponseEntity.ok()
+	        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"").body(file);
+	}
+	  
+//	@PostMapping("/image")
+//    public ResponseEntity<?> uploadImage(@RequestParam("file")MultipartFile file,
+//                                         @RequestParam("filename") String name) {
+//    	       
+//        makeDirectoryIfNotExist(imageDirectory);
+//        Path fileNamePath = Paths.get(imageDirectory, name);
+//        try {
+//            Files.write(fileNamePath, file.getBytes());
+//            Image image = new Image();
+//            image.setfilename(name);
+//            image.setfilepath(fileNamePath.toString());
+//    		Image createdImage = imageManagementService.save(image);
+//    		
+//    		
+//    		URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{name}").buildAndExpand(fileNamePath.toString()).toUri();
+//			System.out.println(uri);
+//            return ResponseEntity.status(HttpStatus.CREATED).body(imageManagementService.findById(createdImage.getId()));
+//        } catch (IOException ex) {
+//        	return new ResponseEntity<String>("Image upload failed", HttpStatus.BAD_REQUEST);
+//        }
+//    }
 
 	@DeleteMapping("/image/{id}")
 	public ResponseEntity<Void> deleteImage(@PathVariable long id) {
-		Image image = imageManagementService.deleteById(id);
+		
+		Image image = imageManagementService.findById(id);
+		File file = new File(image.getfilepath());
+        if(file.delete()) { 
+            System.out.println(file.getName() + " is deleted!");
+        } else {
+            System.out.println("Delete operation is failed.");
+        }
 
-		if (image != null) {
+		if (imageManagementService.deleteById(id) != null) {
 			return ResponseEntity.noContent().build();
 		}
 
