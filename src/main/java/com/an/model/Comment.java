@@ -1,4 +1,4 @@
-package com.an.restdemo;
+package com.an.model;
 
 public class Comment {
 	private Long id;

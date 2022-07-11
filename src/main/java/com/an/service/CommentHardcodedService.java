@@ -1,4 +1,4 @@
-package com.an.restdemo;
+package com.an.service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,16 +6,13 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.an.model.Comment;
+
 @Service
 public class CommentHardcodedService {
 
 	private static List<Comment> comments = new ArrayList<>();
 	private static long idCounter = 0;
-
-	static {
-		comments.add(new Comment(++idCounter, "anil@gmail.com", "1657281923844", "Test", 1,  68500232));
-		comments.add(new Comment(++idCounter, "test@gmail.com", "1657281908141", "Hi", 2, 84700520));
-	}
 
 	public List<Comment> findAll() {
 		return comments;

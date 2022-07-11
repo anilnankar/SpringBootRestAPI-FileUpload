@@ -1,4 +1,4 @@
-package com.an.restdemo;
+package com.an.upload;
 
 import javax.annotation.Resource;
 
@@ -9,13 +9,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import com.an.service.FilesStorageService;
 
 @SpringBootApplication(scanBasePackages={"com.an"})
-public class RestDemoApplication implements CommandLineRunner {
+public class UploadApplication implements CommandLineRunner {
 
 	@Resource
 	FilesStorageService storageService;
 
 	public static void main(String[] args) {
-		SpringApplication.run(RestDemoApplication.class, args);
+		SpringApplication.run(UploadApplication.class, args);
 	}
 
 	@Override

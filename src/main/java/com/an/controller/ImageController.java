@@ -1,4 +1,4 @@
-package com.an.restdemo;
+package com.an.controller;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,52 +31,61 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.an.message.ResponseMessage;
+import com.an.model.Comment;
+import com.an.model.Image;
+import com.an.service.CommentHardcodedService;
 import com.an.service.FilesStorageService;
+import com.an.service.ImageHardcodedService;
 
+// Allow CORS request from 3000 port
 @CrossOrigin(origins = { "http://localhost:3000" })
 @RestController
-public class ImageResource {
-
-	private static String imageDirectory = System.getProperty("user.dir") + "/uploads/";
-
+public class ImageController {
+	// Create instances of services
 	@Autowired
 	FilesStorageService storageService;
 
 	@Autowired
 	private ImageHardcodedService imageManagementService;
 
-	@Autowired
-	private CommentHardcodedService commentManagementService;
-
+	// Return all images
 	@GetMapping("image")
 	public List<Image> getAllImages() {
 		return imageManagementService.findAll();
 	}
 
+	// Return a particular images
 	@GetMapping("/image/{id}")
 	public Image getImage(@PathVariable long id) {
 		return imageManagementService.findById(id);
 	}	
 	
+	// Upload a new image
 	@PostMapping("/image")
 	public ResponseEntity<ResponseMessage> uploadFile(@RequestParam("file") MultipartFile file,
 			@RequestParam("filename") String name) {
 		String message = "";
 		try {
+			// Upload file
 			storageService.save(file);		
 
+			// Get filename
 			String filename = file.getOriginalFilename().toString();
-			Resource filePath = storageService.load(filename);		    
-			System.out.println("filePath"+filePath);
-		    String url = MvcUriComponentsBuilder
-		          .fromMethodName(ImageResource.class, "getFile", filename.toString()).build().toString();
+			
+			// Load file
+			Resource filePath = storageService.load(filename);
+			
+			// Create image URL
+		    String url = MvcUriComponentsBuilder.fromMethodName(ImageController.class, "getFile", filename.toString()).build().toString();
 		      
+		    // Create image object 
 			Image image = new Image();
 			image.setfilename(filename);
 			image.setfilepath(url.toString());
-			Image createdImage = imageManagementService.save(image);
-			System.out.println(createdImage.getId());
-		  	message = "Uploaded the file successfully: " + file.getOriginalFilename();
+			
+			// Save image with URL
+			imageManagementService.save(image);
+		  	message = "Image uploaded successfully: " + file.getOriginalFilename();
 		  	return ResponseEntity.status(HttpStatus.CREATED).body(new ResponseMessage(message));
 		} catch (Exception e) {
 			message = "Could not upload the file: " + file.getOriginalFilename() + "!";
@@ -84,84 +93,38 @@ public class ImageResource {
 	    }
 	}
 	
+	// Download a image using filename
 	@GetMapping("/files/{filename:.+}")
 	public ResponseEntity<Resource> getFile(@PathVariable String filename) {
-	    Resource file = storageService.load(filename);
+	    // Load file using name
+		Resource file = storageService.load(filename);
+		
+		// Return file
 	    return ResponseEntity.ok()
 	        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"").body(file);
-	}
-	  
-//	@PostMapping("/image")
-//    public ResponseEntity<?> uploadImage(@RequestParam("file")MultipartFile file,
-//                                         @RequestParam("filename") String name) {
-//    	       
-//        makeDirectoryIfNotExist(imageDirectory);
-//        Path fileNamePath = Paths.get(imageDirectory, name);
-//        try {
-//            Files.write(fileNamePath, file.getBytes());
-//            Image image = new Image();
-//            image.setfilename(name);
-//            image.setfilepath(fileNamePath.toString());
-//    		Image createdImage = imageManagementService.save(image);
-//    		
-//    		
-//    		URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{name}").buildAndExpand(fileNamePath.toString()).toUri();
-//			System.out.println(uri);
-//            return ResponseEntity.status(HttpStatus.CREATED).body(imageManagementService.findById(createdImage.getId()));
-//        } catch (IOException ex) {
-//        	return new ResponseEntity<String>("Image upload failed", HttpStatus.BAD_REQUEST);
-//        }
-//    }
+	}	  
 
+	// Delete a image using id
 	@DeleteMapping("/image/{id}")
 	public ResponseEntity<Void> deleteImage(@PathVariable long id) {
 		
+		// Fetch image details using id
 		Image image = imageManagementService.findById(id);
 		File file = new File(image.getfilepath());
+		
+		// Delete the uploaded file 
         if(file.delete()) { 
             System.out.println(file.getName() + " is deleted!");
         } else {
             System.out.println("Delete operation is failed.");
         }
 
+        // Delete image record
 		if (imageManagementService.deleteById(id) != null) {
 			return ResponseEntity.noContent().build();
 		}
 
 		return ResponseEntity.notFound().build();
 	}
-	
-	@GetMapping("comment")
-	public List<Comment> getAllComments() {
-		return commentManagementService.findAll();
-	}	
-
-	@GetMapping("/comment/{id}")
-	public Comment getComment(@PathVariable long id) {
-		return commentManagementService.findById(id);
-	}
-	
-	@PostMapping("/comment")
-	public ResponseEntity<Comment> createComment(@RequestBody Comment comment) {
-		Comment createdComment = commentManagementService.save(comment);
-        return ResponseEntity.status(HttpStatus.CREATED).body(commentManagementService.findById(createdComment.getId()));
-	}
-
-	@DeleteMapping("/comment/{id}")
-	public ResponseEntity<Void> deleteComment(@PathVariable long id) {
-		Comment comment = commentManagementService.deleteById(id);
-		if (comment != null) {
-			return ResponseEntity.noContent().build();
-		}
-
-		return ResponseEntity.notFound().build();
-	}
-	
-    private void makeDirectoryIfNotExist(String imageDirectory) {
-        File directory = new File(imageDirectory);
-        if (!directory.exists()) {
-            directory.mkdir();
-        }
-    }
 	
 }
