@@ -15,5 +15,7 @@ public interface FilesStorageService {
 
   public void deleteAll();
 
+  public Path getPath();
+
   public Stream<Path> loadAll();
 }

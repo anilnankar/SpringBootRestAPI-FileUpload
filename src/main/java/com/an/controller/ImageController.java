@@ -110,11 +110,17 @@ public class ImageController {
 		
 		// Fetch image details using id
 		Image image = imageManagementService.findById(id);
-		File file = new File(image.getfilepath());
 		
+		// Get image directory path
+        Path dirPath = storageService.getPath();
+        
+        // Create file object with complete path
+        String filePath = dirPath.toString()+'/'+image.getfilename();
+        File file = new File(filePath);
+        
 		// Delete the uploaded file 
         if(file.delete()) { 
-            System.out.println(file.getName() + " is deleted!");
+            System.out.println("Image is deleted!");
         } else {
             System.out.println("Delete operation is failed.");
         }

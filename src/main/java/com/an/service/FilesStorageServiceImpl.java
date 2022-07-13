@@ -70,4 +70,8 @@ public class FilesStorageServiceImpl implements FilesStorageService {
     }
   }
 
+  @Override
+  public Path getPath() {
+    return root;
+  }
 }
